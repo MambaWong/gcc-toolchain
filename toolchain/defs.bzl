@@ -273,7 +273,10 @@ def gcc_register_toolchain(
     #   - aarch64-buildroot-linux-gnu
     #   - arm-buildroot-linux-gnueabihf
     #   - x86_64-buildroot-linux-gnu
-    platform_directory_glob_pattern = "*-buildroot-linux-gnu*"
+    if binary_prefix == "aarch64-mix210":
+        platform_directory_glob_pattern = "aarch64-linux-gnu"
+    else:
+        platform_directory_glob_pattern = "*-buildroot-linux-gnu*"
 
     toolchain_files_repository_name = "{name}_files".format(name = name)
     http_archive(
@@ -320,6 +323,10 @@ ARCHS = struct(
 )
 
 _SYSROOTS = {
+    "aarch64-mix210": struct(
+        sha256 = "d5abda9c79888fdf5a132232ed0386161d7fa592b19c32f0b03900a1ecf910ee",
+        url = "http://localhost/sysroot-aarch64-mix210.tar.xz",
+    ),
     "aarch64": struct(
         sha256 = "6c1b53e2fa3b895fec34f630f8aec41a9a75e9527d7c5f6d859aa9f186edf4a7",
         url = "https://github.com/f0rmiga/gcc-toolchain/releases/download/sysroot-29042024/sysroot-base-aarch64.tar.xz",
@@ -339,6 +346,13 @@ _SYSROOTS = {
 }
 
 _TOOLCHAINS = {
+    "7.3.0": {
+        "aarch64": struct(
+            sha256 = "29b2b0a78315d1468859f5905498c83b473abf9d2b699234705b1de93048c754",
+            strip_prefix = "aarch64-mix210-linux",
+            url = "http://localhost/aarch64-mix210-linux.tar.bz2",
+        ),
+    },
     "10.3.0": {
         "aarch64": struct(
             sha256 = "dec070196608124fa14c3f192364c5b5b057d7f34651ad58ebb8fc87959c97f7",
@@ -434,7 +448,8 @@ filegroup(
         "lib/gcc/{platform_directory_glob_pattern}/*/include/**",
         "lib/gcc/{platform_directory_glob_pattern}/*/include-fixed/**",
         "{platform_directory_glob_pattern}/include/**",
-        "{platform_directory_glob_pattern}/sysroot/usr/include/**",
+        # "{platform_directory_glob_pattern}/sysroot/usr/include/**",
+        "{platform_directory_glob_pattern}/*/usr/include/**",
         "{platform_directory_glob_pattern}/include/c++/*/**",
         "{platform_directory_glob_pattern}/include/c++/*/{platform_directory_glob_pattern}/**",
         "{platform_directory_glob_pattern}/include/c++/*/backward/**",
@@ -457,14 +472,14 @@ filegroup(
 
 filegroup(
     name = "gcc",
-    srcs = [
+    srcs = glob([
         "bin/{binary_prefix}-linux-cpp.br_real",
         "bin/{binary_prefix}-linux-cpp",
         "bin/{binary_prefix}-linux-g++.br_real",
         "bin/{binary_prefix}-linux-g++",
         "bin/{binary_prefix}-linux-gcc.br_real",
         "bin/{binary_prefix}-linux-gcc",
-    ] + glob([
+    ]) + glob([
         "**/cc1plus",
         "**/cc1",
         # These shared objects are needed at runtime by GCC when linked dynamically to them.
@@ -477,10 +492,10 @@ filegroup(
 
 filegroup(
     name = "gfortran",
-    srcs = [
+    srcs = glob([
         "bin/{binary_prefix}-linux-gfortran",
         "bin/{binary_prefix}-linux-gfortran.br_real",
-    ],
+    ]),
     visibility = ["//visibility:public"],
 )
 

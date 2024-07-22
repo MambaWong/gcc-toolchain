@@ -42,6 +42,9 @@ load("//toolchain:defs.bzl", "gcc_register_toolchain", "ARCHS")
 gcc_register_toolchain(
     name = "gcc_toolchain_aarch64",
     target_arch = ARCHS.aarch64,
+    gcc_version = "7.3.0",
+    binary_prefix = "aarch64-mix210",
+    sysroot_variant = "aarch64-mix210",
 )
 
 gcc_register_toolchain(

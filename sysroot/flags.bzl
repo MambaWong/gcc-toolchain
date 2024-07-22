@@ -69,6 +69,7 @@ def ldflags(arch, gcc_version):
             arch_specific_prefix = arch_specific_prefix,
             lib = lib
         ),
+        "-L%sysroot%/{lib}".format(lib = lib),
         "-L%sysroot%/usr/lib",
         "-L%sysroot%/lib/gcc/{target}/{gcc_version}".format(
             gcc_version = gcc_version,
@@ -107,5 +108,6 @@ def includes(arch, gcc_version):
             gcc_version = gcc_version,
             target = target,
         ),
+        "%sysroot%/include",
         "%sysroot%/usr/include",
     ]
