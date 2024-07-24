@@ -321,8 +321,8 @@ ARCHS = struct(
 
 _SYSROOTS = {
     "aarch64": struct(
-        sha256 = "6c1b53e2fa3b895fec34f630f8aec41a9a75e9527d7c5f6d859aa9f186edf4a7",
-        url = "https://github.com/f0rmiga/gcc-toolchain/releases/download/sysroot-29042024/sysroot-base-aarch64.tar.xz",
+        sha256 = "e2c758e4447ace6fb0917ae6ca9e8ec6a7829cb4828d23fd640f479b4e94802a",
+        url = "https://github.com/MambaWong/gcc-toolchain/releases/download/sysroot-20240725/sysroot-python-aarch64.tar.xz",
     ),
     "armv7": struct(
         sha256 = "f974f5ad7385cdfa41085389511a528837689e4eae8a9ed3aa528256e760ebd7",
