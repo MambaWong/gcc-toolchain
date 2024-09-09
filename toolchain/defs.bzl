@@ -325,7 +325,7 @@ ARCHS = struct(
 _SYSROOTS = {
     "aarch64-mix210": struct(
         sha256 = "d5abda9c79888fdf5a132232ed0386161d7fa592b19c32f0b03900a1ecf910ee",
-        url = "http://localhost/sysroot-aarch64-mix210.tar.xz",
+        url = "https://github.com/MambaWong/gcc-toolchain/releases/download/aarch64-mix210-20240910/sysroot-aarch64-mix210.tar.xz",
     ),
     "aarch64": struct(
         sha256 = "6c1b53e2fa3b895fec34f630f8aec41a9a75e9527d7c5f6d859aa9f186edf4a7",
@@ -350,7 +350,7 @@ _TOOLCHAINS = {
         "aarch64": struct(
             sha256 = "29b2b0a78315d1468859f5905498c83b473abf9d2b699234705b1de93048c754",
             strip_prefix = "aarch64-mix210-linux",
-            url = "http://localhost/aarch64-mix210-linux.tar.bz2",
+            url = "https://github.com/MambaWong/gcc-toolchain/releases/download/aarch64-mix210-20240910/aarch64-mix210-linux.tar.bz2",
         ),
     },
     "10.3.0": {
