@@ -30,12 +30,15 @@ def _gcc_toolchain_impl(rctx):
     rctx.download_and_extract(
         url = url,
         sha256 = sha256,
+        stripPrefix = rctx.attr.strip_prefix if rctx.attr.strip_prefix != None else "",
         auth = use_netrc(read_user_netrc(rctx), [url], {}),
     )
 
     absolute_toolchain_root = str(rctx.path("."))
     execroot = paths.normalize(paths.join(absolute_toolchain_root, "..", ".."))
     toolchain_root = paths.relativize(absolute_toolchain_root, execroot)
+
+    sysroot = "%workspace%/sysroot".replace("%workspace%", toolchain_root)
 
     def _format_flags(flags):
         return [
@@ -56,13 +59,14 @@ def _gcc_toolchain_impl(rctx):
     tool_paths = _render_tool_paths(rctx, toolchain_root, binary_prefix)
     rctx.file("tool_paths.bzl", "tool_paths = {}".format(str(tool_paths)))
 
-    include_prefix = None
-    if target_arch == ARCHS.aarch64:
-        include_prefix = "aarch64-linux/"
-    elif target_arch == ARCHS.armv7:
-        include_prefix = "arm-linux-gnueabihf/"
-    elif target_arch == ARCHS.x86_64:
-        include_prefix = "x86_64-linux/"
+    include_prefix = rctx.attr.include_prefix
+    if include_prefix == None:    
+        if target_arch == ARCHS.aarch64:
+            include_prefix = "aarch64-linux/"
+        elif target_arch == ARCHS.armv7:
+            include_prefix = "arm-linux-gnueabihf/"
+        elif target_arch == ARCHS.x86_64:
+            include_prefix = "x86_64-linux/"
 
     c_builtin_includes = [
         include.format(
@@ -70,11 +74,17 @@ def _gcc_toolchain_impl(rctx):
             include_prefix = include_prefix,
         )
         for include in [
+            # GCC internal C headers
+            "%workspace%/sysroot/lib/gcc/{include_prefix}{gcc_version}/include",
+            "%workspace%/sysroot/lib/gcc/{include_prefix}{gcc_version}/include-fixed",
+
+            # toolchain-gcc builtin includes
             "%workspace%/lib/gcc/{include_prefix}{gcc_version}/include",
             "%workspace%/lib/gcc/{include_prefix}{gcc_version}/include-fixed",
         ] + ([
             "%workspace%/{include_prefix}include",
         ] if target_arch != ARCHS.x86_64 else []) + [
+            # glibc C headers
             "%workspace%/sysroot/usr/include",
         ]
     ]
@@ -99,6 +109,11 @@ def _gcc_toolchain_impl(rctx):
                 include_prefix = include_prefix,
             )
             for include in [
+                #
+                # "%workspace%/sysroot/{include_prefix}include/c++/{gcc_version}",
+                # "%workspace%/sysroot/{include_prefix}include/c++/{gcc_version}/{include_prefix}",
+
+                # C++ STL
                 "%workspace%/{include_prefix}include/c++/{gcc_version}",
                 "%workspace%/{include_prefix}include/c++/{gcc_version}/{include_prefix}",
                 "%workspace%/{include_prefix}include/c++/{gcc_version}/backward",
@@ -200,6 +215,7 @@ def _gcc_toolchain_impl(rctx):
     # keeps both linkers working.
     extra_ldflags = [
         lib.format(
+            gcc_version = rctx.attr.gcc_version,
             include_prefix = include_prefix,
         )
         for lib in [
@@ -213,6 +229,9 @@ def _gcc_toolchain_impl(rctx):
             "-L%workspace%/{include_prefix}lib",
             "-L%workspace%/lib64",
             "-L%workspace%/{include_prefix}lib64",
+            "-L%workspace%/sysroot/lib",
+            "-L%workspace%/sysroot/usr/lib",
+            "-L%workspace%/sysroot/lib/gcc/{include_prefix}{gcc_version}",
         ]
     ]
     extra_ldflags.extend(rctx.attr.extra_ldflags)
@@ -235,6 +254,8 @@ def _gcc_toolchain_impl(rctx):
         target_settings = target_settings,
         binary_prefix = binary_prefix,
         include_prefix = include_prefix,
+        sysroot = sysroot,
+        gcc_version = rctx.attr.gcc_version,
 
         # Includes
         cxx_builtin_include_directories = _format_builtins(builtin_include_directories),
@@ -386,6 +407,14 @@ AVAILABLE_GCC_VERSIONS = {
 DEFAULT_GCC_VERSION = "16.1.0"
 
 _FEATURE_ATTRS = {
+    "strip_prefix": attr.string(
+        doc = "An explicit prefix to strip from the extracted files.",
+        default = "",
+    ), 
+    "include_prefix": attr.string(
+        doc = "An explicit prefix for public headers.",
+        mandatory = True,
+    ),
     "binary_prefix": attr.string(
         doc = "An explicit prefix used by each binary in bin/.",
         mandatory = True,
@@ -579,6 +608,13 @@ def gcc_declare_toolchain(
         target_arch: The target architecture of the toolchain.
         **kwargs: The extra arguments passed to `gcc_toolchain`. See `gcc_toolchain` for more info.
     """
+
+    strip_prefix = kwargs.pop("strip_prefix", None)
+
+    include_prefix = kwargs.pop("include_prefix", None)
+    if include_prefix != None and not include_prefix.endswith("/"):
+        include_prefix = include_prefix + "/"
+
     binary_prefix = kwargs.pop("binary_prefix", None)
     if binary_prefix == None:
         if target_arch == ARCHS.aarch64:
@@ -592,6 +628,8 @@ def gcc_declare_toolchain(
 
     gcc_toolchain(
         name = name,
+        strip_prefix = strip_prefix,
+        include_prefix = include_prefix,
         binary_prefix = binary_prefix,
         extra_cflags = kwargs.pop("extra_cflags", []),
         extra_cxxflags = kwargs.pop("extra_cxxflags", []),
@@ -667,6 +705,7 @@ cc_toolchain(
 
 cc_toolchain_config(
     name = "cc_toolchain_config",
+    builtin_sysroot = "{sysroot}",
     cxx_builtin_include_directories = {cxx_builtin_include_directories},
     enable_fortran = {enable_fortran},
     extra_cflags = {extra_cflags},
@@ -736,7 +775,14 @@ filegroup(
         "lib/gcc/{include_prefix}*/include/**",
         "lib/gcc/{include_prefix}*/include-fixed/**",
         "{include_prefix}include/**",
+
+        # sysroot includes
         "sysroot/usr/include/**",
+        "sysroot/include/**",
+        "sysroot/lib/gcc/{include_prefix}{gcc_version}/include/**",
+        "sysroot/lib/gcc/{include_prefix}{gcc_version}/include-fixed/**",
+        "sysroot/{include_prefix}include/c++/{gcc_version}/**",
+        "sysroot/{include_prefix}include/c++/{gcc_version}/{include_prefix}**",        
 
         # C++ includes
         "{include_prefix}include/c++/*/**",

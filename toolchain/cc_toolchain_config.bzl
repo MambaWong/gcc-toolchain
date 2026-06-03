@@ -94,6 +94,7 @@ def _base_and_fortran(base, *fortran):
     return base + list(fortran)
 
 def _impl(ctx):
+    builtin_sysroot = ctx.attr.builtin_sysroot
     cxx_builtin_include_directories = ctx.attr.cxx_builtin_include_directories
     tool_paths = ctx.attr.tool_paths
     enable_fortran = ctx.attr.enable_fortran
@@ -128,6 +129,36 @@ def _impl(ctx):
                             "-lrt",
                             "-pthread",
                         ],
+                    ),
+                ],
+            ),
+            flag_set(
+                actions = base_link_actions,
+                flag_groups = [
+                    flag_group(
+                        flags = ["-lstdc++"],
+                    ),
+                ],
+                with_features = [
+                    with_feature_set(
+                        not_features = [
+                            "no_libstdcxx",
+                            "static_libstdcxx",
+                        ],
+                    ),
+                ],
+            ),
+            flag_set(
+                actions = base_link_actions,
+                flag_groups = [
+                    flag_group(
+                        flags = ["-l:libstdc++.a"],
+                    ),
+                ],
+                with_features = [
+                    with_feature_set(
+                        not_features = ["no_libstdcxx"],
+                        features = ["static_libstdcxx"],
                     ),
                 ],
             ),
@@ -291,7 +322,7 @@ def _impl(ctx):
             ),
             flag_set(
                 actions = base_cpp_compile_actions + [ACTION_NAMES.lto_backend],
-                flag_groups = [flag_group(flags = ["-std=c++17"])],
+                flag_groups = [flag_group(flags = ["-std=c++14"])],
             ),
         ],
     )
@@ -560,6 +591,7 @@ def _impl(ctx):
             cc_target_os = None,
             compiler = "gcc",
             ctx = ctx,
+            builtin_sysroot = builtin_sysroot,
             cxx_builtin_include_directories = cxx_builtin_include_directories,
             features = features,
             host_system_name = "local",
@@ -578,6 +610,7 @@ def _impl(ctx):
 cc_toolchain_config = rule(
     implementation = _impl,
     attrs = {
+        "builtin_sysroot": attr.string(mandatory = True),
         "cxx_builtin_include_directories": attr.string_list(mandatory = True),
         "enable_fortran": attr.bool(mandatory = True),
         "extra_cflags": attr.string_list(mandatory = True),
